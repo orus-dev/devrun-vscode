@@ -1,70 +1,112 @@
 import * as vscode from "vscode";
+import { diff_match_patch, Diff } from "diff-match-patch";
 import { LiveRunMove } from "./types";
 import { addRunMoves } from "./client";
 
 export function startMonitoring(runId: string) {
+  const dmp = new diff_match_patch();
+
   let moveId = 0;
   let moves: LiveRunMove[] = [];
-  let lastLatency = Date.now();
+
+  let lastText = "";
+  let lastEventTime = Date.now();
   let idleTimeout: NodeJS.Timeout | undefined;
   let isSending = false;
 
-  const SEND_IDLE_MS = 350;
+  const IDLE_MS = 350;
 
-  const flushMoves = async () => {
+  const editor = vscode.window.activeTextEditor;
+  if (editor) {
+    lastText = editor.document.getText();
+  }
+
+  async function flush() {
     if (!moves.length || isSending) return;
 
     isSending = true;
-    const toSend = moves;
+    const batch = moves;
     moves = [];
 
     try {
-      await addRunMoves(runId, toSend);
+      await addRunMoves(runId, batch);
     } finally {
       isSending = false;
     }
-  };
+  }
 
-  const docSub = vscode.workspace.onDidChangeTextDocument((e) => {
+  const readInterval = setInterval(() => {
     const editor = vscode.window.activeTextEditor;
-    if (!editor || e.document !== editor.document) return;
+    if (!editor) return;
 
-    const edit = e.contentChanges[0];
-    if (!edit) return;
+    const newText = editor.document.getText();
+    if (newText === lastText) return;
 
     const now = Date.now();
-    const latency = capToZeroAbove(now - lastLatency, SEND_IDLE_MS);
-    lastLatency = now;
+    const latency = capLatency(now - lastEventTime, IDLE_MS);
+    lastEventTime = now;
 
-    const cursorOffset = editor.document.offsetAt(editor.selection.active);
+    const diffs = dmp.diff_main(lastText, newText);
+    dmp.diff_cleanupEfficiency(diffs);
 
-    moves.push({
-      latency,
-      cursor: cursorOffset,
-      changes: {
-        from: edit.rangeOffset,
-        to: edit.rangeOffset + edit.rangeLength,
-        insert: edit.text,
-      },
-      moveId: moveId++,
-    });
+    const changes = diffsToChanges(diffs);
 
-    if (idleTimeout) {
-      clearTimeout(idleTimeout);
+    lastText = newText;
+
+    for (const change of changes) {
+      moves.push({
+        moveId: moveId++,
+        latency,
+        cursor: editor.document.offsetAt(editor.selection.active),
+        changes: change,
+      });
     }
 
-    idleTimeout = setTimeout(() => {
-      flushMoves();
-    }, SEND_IDLE_MS);
-  });
+    if (idleTimeout) clearTimeout(idleTimeout);
+    idleTimeout = setTimeout(flush, IDLE_MS);
+  }, 500);
 
   return () => {
-    docSub.dispose();
+    clearInterval(readInterval);
     if (idleTimeout) clearTimeout(idleTimeout);
-    flushMoves();
+    flush();
   };
 }
 
-function capToZeroAbove(value: number, max: number) {
+function diffsToChanges(diffs: Diff[]) {
+  const changes: {
+    from: number;
+    to: number;
+    insert: string;
+  }[] = [];
+
+  let offset = 0;
+
+  for (const [op, text] of diffs) {
+    if (op === 0) {
+      // equal
+      offset += text.length;
+    } else if (op === -1) {
+      // delete
+      changes.push({
+        from: offset,
+        to: offset + text.length,
+        insert: "",
+      });
+    } else if (op === 1) {
+      // insert
+      changes.push({
+        from: offset,
+        to: offset,
+        insert: text,
+      });
+      offset += text.length;
+    }
+  }
+
+  return changes;
+}
+
+function capLatency(value: number, max: number) {
   return value > max ? 0 : value;
 }
