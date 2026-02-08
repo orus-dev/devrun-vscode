@@ -3,8 +3,7 @@ import { currentRun, startRun, stopRun } from "./run";
 import { startServer, stopServer } from "./server";
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log("dev-run Activated");
-
+  const config = vscode.workspace.getConfiguration("devrun");
   const statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
     10,
@@ -49,6 +48,14 @@ export function activate(context: vscode.ExtensionContext) {
       stopServer(statusBarItem),
     ),
   );
+  console.log("dev-run Activated");
+
+  const autoStart = config.get<boolean>("autoStartServer");
+
+  if (autoStart) {
+    startServer(statusBarItem);
+    console.log("dev-run server auto started!");
+  }
 }
 
 export function deactivate() {
