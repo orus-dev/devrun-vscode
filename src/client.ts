@@ -1,4 +1,5 @@
 import axios from "axios";
+import { LiveRunMove } from "./types";
 
 var cookies: string | undefined;
 
@@ -40,4 +41,17 @@ export async function submitRun(runId: string) {
   );
 }
 
-export async function addRunMoves() {}
+export async function addRunMoves(runId: string, moves: LiveRunMove[]) {
+  await axios.post(
+    "http://localhost:3000/api/run/move",
+    {
+      runId,
+      moves,
+    },
+    {
+      headers: {
+        Cookie: cookies,
+      },
+    },
+  );
+}

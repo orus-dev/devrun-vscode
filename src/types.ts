@@ -6,4 +6,5 @@ export interface LiveRunMove {
     to: number;
     insert: string;
   };
+  moveId: number;
 }
