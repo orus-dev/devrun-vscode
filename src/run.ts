@@ -1,9 +1,13 @@
 import * as vscode from "vscode";
+import { addRun, submitRun } from "./client";
+import { startMonitoring } from "./move";
 
 export var currentRun: {
   interval: NodeJS.Timeout;
+  stopMonitoring: () => void;
   problemId: string;
   start: Date;
+  id: string;
 } | null = null;
 
 export async function startRun(
@@ -36,11 +40,15 @@ export async function startRun(
 
   if (!mode) return;
 
+  const runId = await addRun(problemId, mode);
+
   let start = Date.now();
 
   currentRun = {
+    id: runId,
     problemId,
     start: new Date(),
+    stopMonitoring: startMonitoring(runId),
     interval: setInterval(() => {
       const elapsed = Date.now() - start;
 
@@ -53,11 +61,17 @@ export async function startRun(
         .padStart(2, "0")}`;
     }, 50),
   };
+
+  await vscode.commands.executeCommand("setContext", "devrun.runActive", true);
 }
 
 export async function stopRun() {
   if (currentRun) {
-    clearTimeout(currentRun.interval);
+    clearInterval(currentRun.interval);
+    submitRun(currentRun.id);
+
     currentRun = null;
   }
+
+  await vscode.commands.executeCommand("setContext", "devrun.runActive", false);
 }
