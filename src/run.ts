@@ -1,6 +1,10 @@
 import * as vscode from "vscode";
 
-export var currentRun: NodeJS.Timeout | null = null;
+export var currentRun: {
+  interval: NodeJS.Timeout;
+  problemId: string;
+  start: Date;
+} | null = null;
 
 export async function startRun(
   statusBarItem: vscode.StatusBarItem,
@@ -34,22 +38,26 @@ export async function startRun(
 
   let start = Date.now();
 
-  currentRun = setInterval(() => {
-    const elapsed = Date.now() - start;
+  currentRun = {
+    problemId,
+    start: new Date(),
+    interval: setInterval(() => {
+      const elapsed = Date.now() - start;
 
-    const minutes = Math.floor(elapsed / 60000);
-    const seconds = Math.floor((elapsed % 60000) / 1000);
-    const hundredths = Math.floor((elapsed % 1000) / 10);
+      const minutes = Math.floor(elapsed / 60000);
+      const seconds = Math.floor((elapsed % 60000) / 1000);
+      const hundredths = Math.floor((elapsed % 1000) / 10);
 
-    statusBarItem.text = `$(clock) ${minutes}:${seconds.toString().padStart(2, "0")}.${hundredths
-      .toString()
-      .padStart(2, "0")}`;
-  }, 50);
+      statusBarItem.text = `$(clock) ${minutes}:${seconds.toString().padStart(2, "0")}.${hundredths
+        .toString()
+        .padStart(2, "0")}`;
+    }, 50),
+  };
 }
 
 export async function stopRun() {
   if (currentRun) {
-    clearTimeout(currentRun);
+    clearTimeout(currentRun.interval);
     currentRun = null;
   }
 }
