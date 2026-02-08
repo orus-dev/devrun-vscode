@@ -30,6 +30,8 @@ export async function startRun(
     canPickMany: false,
   });
 
+  if (!mode) return;
+
   let start = Date.now();
 
   currentRun = setInterval(() => {
