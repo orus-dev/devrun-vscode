@@ -14,7 +14,8 @@ app.use(
       if (
         !origin ||
         origin.includes("localhost") ||
-        origin.includes("127.0.0.1")
+        origin.includes("127.0.0.1") ||
+        origin === "https://dev-run.netlify.app"
       ) {
         callback(null, true);
       } else {
