@@ -9,13 +9,19 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "devrun-vscode.helloWorld",
-        "title": "Hello World"
+        "command": "devrun-vscode.startRun",
+        "title": "DevRun: Start a Run"
+      },
+      {
+        "command": "devrun-vscode.startServer",
+        "title": "DevRun: Start the run server (for quick run starts)"
       }
     ]
   },
