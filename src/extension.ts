@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { currentRun, startRun, stopRun } from "./run";
+import { startServer, stopServer } from "./server";
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("dev-run Activated");
@@ -9,36 +10,20 @@ export function activate(context: vscode.ExtensionContext) {
     10,
   );
 
-  statusBarItem.text = "$(clock) No run yet";
+  statusBarItem.text = "$(clock) No active run";
   statusBarItem.show();
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("devrun-vscode.startRun", async () => {
-      if (currentRun) {
-        vscode.window.showErrorMessage("You are already in a run");
-        return;
-      }
-
-      const problemId = await vscode.window.showInputBox({
-        prompt: "Enter a valid problem ID",
-        placeHolder: "my-problem",
-        validateInput: (text) => {
-          return text.match(/^[a-zA-Z0-9-]+$/)
-            ? null
-            : "Must only contain '-' and alphanumeric characters";
-        },
-      });
-
-      if (!problemId) {
-        return;
-      }
-
-      startRun(statusBarItem, problemId);
-    }),
+    vscode.commands.registerCommand(
+      "devrun-vscode.startRun",
+      async (problemId?: string) => startRun(statusBarItem, problemId),
+    ),
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("devrun-vscode.stopRun", async () => {
+      if (!currentRun) return;
+
       const isStop = await vscode.window.showWarningMessage(
         "Are you sure you want to stop the run?",
         { modal: true },
@@ -48,15 +33,21 @@ export function activate(context: vscode.ExtensionContext) {
 
       if (isStop === "Yes") {
         stopRun();
-        statusBarItem.text = "$(clock) No run yet";
+        statusBarItem.text = "$(clock) No active run";
       }
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("devrun-vscode.startServer", async () => {
-      
-    }),
+    vscode.commands.registerCommand("devrun-vscode.startServer", async () =>
+      startServer(statusBarItem),
+    ),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("devrun-vscode.stopServer", async () =>
+      stopServer(statusBarItem),
+    ),
   );
 }
 
