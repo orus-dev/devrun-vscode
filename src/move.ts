@@ -1,65 +1,50 @@
 import * as vscode from "vscode";
 import { LiveRunMove } from "./types";
 import { addRunMoves } from "./client";
-import { randomInt } from "crypto";
-
-let lastText = "";
-let lastCursor = 0;
-let moveId = 0;
 
 export function startMonitoring(runId: string) {
-  lastText = "";
+  let moveId = 0;
+  let moves: LiveRunMove[] = [];
+  let lastLatency = Date.now();
 
-  return setInterval(() => {
+  const docSub = vscode.workspace.onDidChangeTextDocument((e) => {
     const editor = vscode.window.activeTextEditor;
-    if (!editor) return;
+    if (!editor || e.document !== editor.document) return;
 
-    const currentText = editor.document.getText();
+    const edit = e.contentChanges[0];
+    if (!edit) return;
+
+    const now = Date.now();
+    const latency = capToZeroAbove(now - lastLatency, 350);
+    lastLatency = now;
+
     const cursorOffset = editor.document.offsetAt(editor.selection.active);
 
-    let change: { from: number; to: number; insert: string } | undefined;
-
-    if (currentText !== lastText) {
-      let start = 0;
-      while (
-        start < lastText.length &&
-        start < currentText.length &&
-        lastText[start] === currentText[start]
-      ) {
-        start++;
-      }
-
-      let endOld = lastText.length - 1;
-      let endNew = currentText.length - 1;
-      while (
-        endOld >= start &&
-        endNew >= start &&
-        lastText[endOld] === currentText[endNew]
-      ) {
-        endOld--;
-        endNew--;
-      }
-
-      change = {
-        from: start,
-        to: endOld + 1, // ⚡ correct range in old text
-        insert: currentText.slice(start, endNew + 1),
-      };
-
-      lastText = currentText;
-    }
-
-    const move: LiveRunMove = {
-      latency: 300,
+    moves.push({
+      latency,
       cursor: cursorOffset,
-      changes: change,
-      moveId,
-    };
+      changes: {
+        from: edit.rangeOffset,
+        to: edit.rangeOffset + edit.rangeLength,
+        insert: edit.text,
+      },
+      moveId: moveId++,
+    });
+  });
 
-    if (move.changes || move.cursor !== lastCursor) {
-      addRunMoves(runId, [move]);
+  const sendInterval = setInterval(() => {
+    if (moves.length) {
+      addRunMoves(runId, moves);
+      moves = [];
     }
+  }, 3000);
 
-    lastCursor = move.cursor;
-  }, 1000);
+  return () => {
+    docSub.dispose();
+    clearInterval(sendInterval);
+  };
+}
+
+function capToZeroAbove(value: number, max: number) {
+  return value > max ? 0 : value;
 }

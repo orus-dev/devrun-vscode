@@ -4,7 +4,7 @@ import { startMonitoring } from "./move";
 
 export var currentRun: {
   interval: NodeJS.Timeout;
-  monitorInterval: NodeJS.Timeout;
+  stopMonitoring: () => void;
   problemId: string;
   start: Date;
   id: string;
@@ -48,6 +48,7 @@ export async function startRun(
     id: runId,
     problemId,
     start: new Date(),
+    stopMonitoring: startMonitoring(runId),
     interval: setInterval(() => {
       const elapsed = Date.now() - start;
 
@@ -59,7 +60,6 @@ export async function startRun(
         .toString()
         .padStart(2, "0")}`;
     }, 50),
-    monitorInterval: startMonitoring(runId),
   };
 
   await vscode.commands.executeCommand("setContext", "devrun.runActive", true);
@@ -68,8 +68,6 @@ export async function startRun(
 export async function stopRun() {
   if (currentRun) {
     clearInterval(currentRun.interval);
-    clearInterval(currentRun.monitorInterval);
-
     submitRun(currentRun.id);
 
     currentRun = null;
