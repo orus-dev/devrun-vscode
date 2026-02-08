@@ -53,6 +53,8 @@ export async function startRun(
         .padStart(2, "0")}`;
     }, 50),
   };
+
+  await vscode.commands.executeCommand("setContext", "devrun.runActive", true);
 }
 
 export async function stopRun() {
@@ -60,4 +62,6 @@ export async function stopRun() {
     clearTimeout(currentRun.interval);
     currentRun = null;
   }
+
+  await vscode.commands.executeCommand("setContext", "devrun.runActive", false);
 }

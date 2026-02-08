@@ -31,7 +31,27 @@
         "command": "devrun-vscode.stopServer",
         "title": "DevRun: Stop the run server (for quick run starts)"
       }
-    ]
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "devrun-vscode.startRun",
+          "when": "!devrun.runActive"
+        },
+        {
+          "command": "devrun-vscode.stopRun",
+          "when": "devrun.runActive"
+        },
+        {
+          "command": "devrun-vscode.startServer",
+          "when": "!devrun.serverActive"
+        },
+        {
+          "command": "devrun-vscode.stopServer",
+          "when": "devrun.serverActive"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

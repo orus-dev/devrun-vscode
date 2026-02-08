@@ -52,6 +52,12 @@ export async function startServer(statusBarItem: vscode.StatusBarItem) {
   server = app.listen(63780, "127.0.0.1", () => {
     setTimeout(() => (statusBarItem.text = "$(clock) No active run"), 500);
   });
+
+  await vscode.commands.executeCommand(
+    "setContext",
+    "devrun.serverActive",
+    true,
+  );
 }
 
 export async function stopServer(statusBarItem: vscode.StatusBarItem) {
@@ -67,4 +73,10 @@ export async function stopServer(statusBarItem: vscode.StatusBarItem) {
 
   server = undefined;
   setTimeout(() => (statusBarItem.text = "$(clock) No active run"), 500);
+
+  await vscode.commands.executeCommand(
+    "setContext",
+    "devrun.serverActive",
+    false,
+  );
 }
