@@ -6,6 +6,24 @@ export function startMonitoring(runId: string) {
   let moveId = 0;
   let moves: LiveRunMove[] = [];
   let lastLatency = Date.now();
+  let idleTimeout: NodeJS.Timeout | undefined;
+  let isSending = false;
+
+  const SEND_IDLE_MS = 350;
+
+  const flushMoves = async () => {
+    if (!moves.length || isSending) return;
+
+    isSending = true;
+    const toSend = moves;
+    moves = [];
+
+    try {
+      await addRunMoves(runId, toSend);
+    } finally {
+      isSending = false;
+    }
+  };
 
   const docSub = vscode.workspace.onDidChangeTextDocument((e) => {
     const editor = vscode.window.activeTextEditor;
@@ -15,7 +33,7 @@ export function startMonitoring(runId: string) {
     if (!edit) return;
 
     const now = Date.now();
-    const latency = capToZeroAbove(now - lastLatency, 350);
+    const latency = capToZeroAbove(now - lastLatency, SEND_IDLE_MS);
     lastLatency = now;
 
     const cursorOffset = editor.document.offsetAt(editor.selection.active);
@@ -30,18 +48,20 @@ export function startMonitoring(runId: string) {
       },
       moveId: moveId++,
     });
-  });
 
-  const sendInterval = setInterval(() => {
-    if (moves.length) {
-      addRunMoves(runId, moves);
-      moves = [];
+    if (idleTimeout) {
+      clearTimeout(idleTimeout);
     }
-  }, 3000);
+
+    idleTimeout = setTimeout(() => {
+      flushMoves();
+    }, SEND_IDLE_MS);
+  });
 
   return () => {
     docSub.dispose();
-    clearInterval(sendInterval);
+    if (idleTimeout) clearTimeout(idleTimeout);
+    flushMoves();
   };
 }
 
