@@ -2,15 +2,16 @@ import * as vscode from "vscode";
 import express from "express";
 import * as http from "http";
 import cors from "cors";
+import { getCookies, setCookies } from "./client";
 
-let server: http.Server | undefined;
+var server: http.Server | undefined;
 
 const app = express();
 
+app.use(express.json());
 app.use(
   cors({
     origin: (origin, callback) => {
-      // allow requests with no origin (e.g., direct curl)
       if (
         !origin ||
         origin.includes("localhost") ||
@@ -25,10 +26,19 @@ app.use(
   }),
 );
 
+app.post("/auth", (req, res) => {
+  const { saveCookies } = req.body;
+
+  setCookies(saveCookies);
+
+  res.json({ ok: true });
+});
+
 app.get("/start-run/:problemId", (req, res) => {
   const { problemId } = req.params;
 
-  // trigger VS Code command
+  if (!getCookies()) return res.json({ ok: false, code: "auth" });
+
   vscode.commands.executeCommand("devrun-vscode.startRun", problemId);
 
   res.json({ ok: true, problemId });
