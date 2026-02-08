@@ -1,5 +1,12 @@
 import * as vscode from "vscode";
 
+export var currentRun: NodeJS.Timeout | null = null;
+
+export async function stopRun() {
+  
+  if (currentRun) clearTimeout(currentRun);
+}
+
 export async function startRun(
   statusBarItem: vscode.StatusBarItem,
   problemId: string,
@@ -11,7 +18,7 @@ export async function startRun(
 
   let start = Date.now();
 
-  const interval = setInterval(() => {
+  currentRun = setInterval(() => {
     const elapsed = Date.now() - start;
 
     const minutes = Math.floor(elapsed / 60000);

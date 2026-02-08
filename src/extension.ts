@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { startRun } from "./startRun";
+import { currentRun, startRun, stopRun } from "./run";
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("dev-run Activated");
@@ -12,9 +12,13 @@ export function activate(context: vscode.ExtensionContext) {
   statusBarItem.text = "$(clock) No run yet";
   statusBarItem.show();
 
-  let disposable = vscode.commands.registerCommand(
-    "devrun-vscode.startRun",
-    async () => {
+  context.subscriptions.push(
+    vscode.commands.registerCommand("devrun-vscode.startRun", async () => {
+      if (currentRun) {
+        vscode.window.showErrorMessage("You are already in a run");
+        return;
+      }
+
       const problemId = await vscode.window.showInputBox({
         prompt: "Enter a valid problem ID",
         placeHolder: "my-problem",
@@ -30,10 +34,32 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       startRun(statusBarItem, problemId);
-    },
+    }),
   );
 
-  context.subscriptions.push(disposable);
+  context.subscriptions.push(
+    vscode.commands.registerCommand("devrun-vscode.stopRun", async () => {
+      const isStop = await vscode.window.showWarningMessage(
+        "Are you sure you want to stop the run?",
+        { modal: true },
+        "Yes",
+        "No",
+      );
+
+      if (isStop === "Yes") {
+        stopRun();
+        statusBarItem.text = "$(clock) No run yet";
+      }
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("devrun-vscode.startServer", async () => {
+      
+    }),
+  );
 }
 
-export function deactivate() {}
+export function deactivate() {
+  stopRun();
+}

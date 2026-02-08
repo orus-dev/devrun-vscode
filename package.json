@@ -20,6 +20,10 @@
         "title": "DevRun: Start a Run"
       },
       {
+        "command": "devrun-vscode.stopRun",
+        "title": "DevRun: Stop the Run"
+      },
+      {
         "command": "devrun-vscode.startServer",
         "title": "DevRun: Start the run server (for quick run starts)"
       }
