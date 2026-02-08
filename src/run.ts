@@ -1,9 +1,11 @@
 import * as vscode from "vscode";
+import { addRun, submitRun } from "./client";
 
 export var currentRun: {
   interval: NodeJS.Timeout;
   problemId: string;
   start: Date;
+  id: string;
 } | null = null;
 
 export async function startRun(
@@ -38,7 +40,10 @@ export async function startRun(
 
   let start = Date.now();
 
+  const runId = await addRun(problemId, mode);
+
   currentRun = {
+    id: runId,
     problemId,
     start: new Date(),
     interval: setInterval(() => {
@@ -60,6 +65,7 @@ export async function startRun(
 export async function stopRun() {
   if (currentRun) {
     clearTimeout(currentRun.interval);
+    submitRun(currentRun.id);
     currentRun = null;
   }
 
