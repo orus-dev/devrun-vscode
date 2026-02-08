@@ -38,9 +38,9 @@ export async function startRun(
 
   if (!mode) return;
 
-  let start = Date.now();
-
   const runId = await addRun(problemId, mode);
+
+  let start = Date.now();
 
   currentRun = {
     id: runId,
