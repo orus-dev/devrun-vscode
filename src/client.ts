@@ -10,7 +10,7 @@ export function setCookies(c: string) {
   cookies = c;
 }
 function getOrigin(useLocalhost: boolean) {
-  return useLocalhost ? "http://localhost:3000" : "https://dev-run.netlify.app";
+  return useLocalhost ? "http://localhost:3000" : "https://dev-run.onrender.com";
 }
 
 export async function addRun(

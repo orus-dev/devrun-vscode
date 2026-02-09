@@ -16,7 +16,7 @@ app.use(
         !origin ||
         origin.includes("localhost") ||
         origin.includes("127.0.0.1") ||
-        origin === "https://dev-run.netlify.app"
+        origin === "https://dev-run.onrender.com"
       ) {
         callback(null, true);
       } else {
