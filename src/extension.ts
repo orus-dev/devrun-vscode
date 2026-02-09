@@ -19,13 +19,15 @@ export function activate(context: vscode.ExtensionContext) {
   statusBarItem.text = "$(clock) No active run";
   statusBarItem.show();
 
-  const useLocalhost = config.get<boolean>("useLocalhostServer") || false;
-
   context.subscriptions.push(
     vscode.commands.registerCommand(
       "devrun-vscode.startRun",
       async (problemId?: string) =>
-        startRun(useLocalhost, statusBarItem, problemId),
+        startRun(
+          config.get<boolean>("useLocalhostServer") || false,
+          statusBarItem,
+          problemId,
+        ),
     ),
   );
 
@@ -41,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
       );
 
       if (isStop === "Yes") {
-        stopRun(useLocalhost);
+        stopRun(config.get<boolean>("useLocalhostServer") || false);
         statusBarItem.text = "$(clock) No active run";
       }
     }),
