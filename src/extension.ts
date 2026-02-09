@@ -5,6 +5,8 @@ import os from "os";
 import { exec } from "child_process";
 import net from "net";
 
+var globalStatusBarItem: vscode.StatusBarItem | undefined;
+
 export function activate(context: vscode.ExtensionContext) {
   const config = vscode.workspace.getConfiguration("devrun");
   const statusBarItem = vscode.window.createStatusBarItem(
@@ -12,13 +14,18 @@ export function activate(context: vscode.ExtensionContext) {
     10,
   );
 
+  globalStatusBarItem = statusBarItem;
+
   statusBarItem.text = "$(clock) No active run";
   statusBarItem.show();
+
+  const useLocalhost = config.get<boolean>("useLocalhostServer") || false;
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
       "devrun-vscode.startRun",
-      async (problemId?: string) => startRun(statusBarItem, problemId),
+      async (problemId?: string) =>
+        startRun(useLocalhost, statusBarItem, problemId),
     ),
   );
 
@@ -34,7 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
       );
 
       if (isStop === "Yes") {
-        stopRun();
+        stopRun(useLocalhost);
         statusBarItem.text = "$(clock) No active run";
       }
     }),
@@ -95,7 +102,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-  stopRun();
+  stopServer(globalStatusBarItem as any);
 }
 
 export function canConnect(

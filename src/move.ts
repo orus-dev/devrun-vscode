@@ -4,7 +4,7 @@ import { LiveRunMove } from "./types";
 import { addRunMoves } from "./client";
 import path from "path";
 
-export function startMonitoring(runId: string) {
+export function startMonitoring(useLocalhost: boolean, runId: string) {
   const dmp = new diff_match_patch();
 
   let moveId = 0;
@@ -29,7 +29,7 @@ export function startMonitoring(runId: string) {
     moves = [];
 
     try {
-      await addRunMoves(runId, file, language, batch);
+      await addRunMoves(useLocalhost, runId, file, language, batch);
     } finally {
       isSending = false;
     }

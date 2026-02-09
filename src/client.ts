@@ -9,11 +9,18 @@ export function getCookies(): string | undefined {
 export function setCookies(c: string) {
   cookies = c;
 }
+function getOrigin(useLocalhost: boolean) {
+  return useLocalhost ? "http://localhost:3000" : "https://dev-run.netlify.app";
+}
 
-export async function addRun(problem: string, mode: string): Promise<string> {
+export async function addRun(
+  useLocalhost: boolean,
+  problem: string,
+  mode: string,
+): Promise<string> {
   return (
     await axios.put(
-      "http://localhost:3000/api/run",
+      getOrigin(useLocalhost) + "/api/run",
       {
         problem,
         category: mode,
@@ -27,9 +34,9 @@ export async function addRun(problem: string, mode: string): Promise<string> {
   ).data.runId;
 }
 
-export async function submitRun(runId: string) {
+export async function submitRun(useLocalhost: boolean, runId: string) {
   await axios.post(
-    "http://localhost:3000/api/run",
+    getOrigin(useLocalhost) + "/api/run",
     {
       runId,
     },
@@ -42,13 +49,14 @@ export async function submitRun(runId: string) {
 }
 
 export async function addRunMoves(
+  useLocalhost: boolean,
   runId: string,
   file: string | null,
   language: string | null,
   moves: LiveRunMove[],
 ) {
   await axios.post(
-    "http://localhost:3000/api/run/move",
+    getOrigin(useLocalhost) + "/api/run/move",
     {
       runId,
       file,

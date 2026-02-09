@@ -11,6 +11,7 @@ export var currentRun: {
 } | null = null;
 
 export async function startRun(
+  useLocalhost: boolean,
   statusBarItem: vscode.StatusBarItem,
   problemId?: string,
 ) {
@@ -40,7 +41,7 @@ export async function startRun(
 
   if (!mode) return;
 
-  const runId = await addRun(problemId, mode);
+  const runId = await addRun(useLocalhost, problemId, mode);
 
   let start = Date.now();
 
@@ -48,7 +49,7 @@ export async function startRun(
     id: runId,
     problemId,
     start: new Date(),
-    stopMonitoring: startMonitoring(runId),
+    stopMonitoring: startMonitoring(useLocalhost, runId),
     interval: setInterval(() => {
       const elapsed = Date.now() - start;
 
@@ -65,10 +66,10 @@ export async function startRun(
   await vscode.commands.executeCommand("setContext", "devrun.runActive", true);
 }
 
-export async function stopRun() {
+export async function stopRun(useLocalhost: boolean) {
   if (currentRun) {
     clearInterval(currentRun.interval);
-    submitRun(currentRun.id);
+    submitRun(useLocalhost, currentRun.id);
 
     currentRun = null;
   }

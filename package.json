@@ -59,6 +59,11 @@
           "type": "boolean",
           "default": false,
           "description": "Automatically start the server when vscode starts"
+        },
+        "devrun.useLocalhostServer": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use localhost:3000 as the DevRun run submission server (for development usage)"
         }
       }
     }
