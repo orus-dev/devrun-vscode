@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { diff_match_patch, Diff } from "diff-match-patch";
 import { LiveRunMove } from "./types";
 import { addRunMoves } from "./client";
+import path from "path";
 
 export function startMonitoring(runId: string) {
   const dmp = new diff_match_patch();
@@ -16,12 +17,11 @@ export function startMonitoring(runId: string) {
 
   const IDLE_MS = 350;
 
-  const editor = vscode.window.activeTextEditor;
-  if (editor) {
-    lastText = editor.document.getText();
+  if (vscode.window.activeTextEditor) {
+    lastText = vscode.window.activeTextEditor.document.getText();
   }
 
-  async function flush() {
+  async function flush(file: string | null, language: string | null) {
     if (!moves.length || isSending) return;
 
     isSending = true;
@@ -29,10 +29,17 @@ export function startMonitoring(runId: string) {
     moves = [];
 
     try {
-      await addRunMoves(runId, batch);
+      await addRunMoves(runId, file, language, batch);
     } finally {
       isSending = false;
     }
+  }
+
+  function getLatency(): number {
+    const now = Date.now();
+    const latency = capLatency(now - lastEventTime, IDLE_MS);
+    lastEventTime = now;
+    return latency;
   }
 
   const readInterval = setInterval(() => {
@@ -42,9 +49,7 @@ export function startMonitoring(runId: string) {
     const newText = editor.document.getText();
     if (newText === lastText) return;
 
-    const now = Date.now();
-    const latency = capLatency(now - lastEventTime, IDLE_MS);
-    lastEventTime = now;
+    let latency = getLatency();
 
     const diffs = dmp.diff_main(lastText, newText);
     dmp.diff_cleanupEfficiency(diffs);
@@ -63,13 +68,43 @@ export function startMonitoring(runId: string) {
     }
 
     if (idleTimeout) clearTimeout(idleTimeout);
-    idleTimeout = setTimeout(flush, IDLE_MS);
+    idleTimeout = setTimeout(
+      () =>
+        flush(
+          path.basename(editor?.document.fileName || "") || null,
+          editor?.document.languageId || null,
+        ),
+      IDLE_MS,
+    );
   }, 500);
+
+  vscode.window.onDidChangeActiveTextEditor((editor) => {
+    let latency = getLatency();
+
+    if (idleTimeout) clearTimeout(idleTimeout);
+
+    moves = [];
+
+    moves.push({
+      moveId: moveId++,
+      latency,
+      cursor: editor?.document.offsetAt(editor.selection.active) || 0,
+    });
+
+    flush(
+      path.basename(editor?.document.fileName || "") || null,
+      editor?.document.languageId || null,
+    );
+  });
 
   return () => {
     clearInterval(readInterval);
     if (idleTimeout) clearTimeout(idleTimeout);
-    flush();
+    flush(
+      path.basename(vscode.window.activeTextEditor?.document.fileName || "") ||
+        null,
+      vscode.window.activeTextEditor?.document.languageId || null,
+    );
   };
 }
 

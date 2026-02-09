@@ -41,12 +41,19 @@ export async function submitRun(runId: string) {
   );
 }
 
-export async function addRunMoves(runId: string, moves: LiveRunMove[]) {
+export async function addRunMoves(
+  runId: string,
+  file: string | null,
+  language: string | null,
+  moves: LiveRunMove[],
+) {
   await axios.post(
     "http://localhost:3000/api/run/move",
     {
       runId,
+      file,
       moves,
+      language,
     },
     {
       headers: {
