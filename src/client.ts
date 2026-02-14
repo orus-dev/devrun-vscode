@@ -10,7 +10,7 @@ export function setCookies(c: string) {
   cookies = c;
 }
 function getOrigin(useLocalhost: boolean) {
-  return useLocalhost ? "http://localhost:3000" : "https://dev-run.selimaj.dev/";
+  return useLocalhost ? "http://localhost:3000" : "https://dev-run.selimaj.dev";
 }
 
 export async function addRun(

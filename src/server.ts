@@ -29,6 +29,8 @@ app.use(
 app.post("/auth", (req, res) => {
   const { saveCookies } = req.body;
 
+  console.log("authenticating with cookies", saveCookies);
+
   setCookies(saveCookies);
 
   res.json({ ok: true });
