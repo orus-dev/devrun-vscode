@@ -3,7 +3,7 @@ import { LiveRunMove } from "./types";
 import { randomUUID } from "crypto";
 
 let socket: WebSocket | null = null;
-let cookies: string | undefined;
+let cookies: Record<string, string> | undefined;
 
 type PendingResolver = {
   resolve: (value: any) => void;
@@ -12,11 +12,11 @@ type PendingResolver = {
 
 const pending = new Map<string, PendingResolver>();
 
-export function getCookies(): string | undefined {
+export function getCookies(): Record<string, string> | undefined {
   return cookies;
 }
 
-export function setCookies(c: string) {
+export function setCookies(c: Record<string, string>) {
   cookies = c;
 }
 
@@ -26,53 +26,78 @@ function getWsOrigin(useLocalhost: boolean) {
     : "wss://dev-run.selimaj.dev/api/run";
 }
 
-function ensureSocket(useLocalhost: boolean): WebSocket {
-  if (socket && socket.readyState === WebSocket.OPEN) {
+async function ensureSocket(useLocalhost: boolean): Promise<WebSocket> {
+  if (
+    socket &&
+    socket.url === getWsOrigin(useLocalhost) &&
+    socket.readyState === WebSocket.OPEN
+  ) {
     return socket;
   }
 
-  socket = new WebSocket(getWsOrigin(useLocalhost));
+  if (socket && socket.url !== getWsOrigin(useLocalhost)) {
+    socket.close();
+  }
 
-  socket.onmessage = (e) => {
-    const msg = JSON.parse(e.data.toString());
-    const { requestId, ok, data, error } = msg;
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(getWsOrigin(useLocalhost));
 
-    if (!requestId) return;
+    ws.onopen = () => {
+      socket = ws;
 
-    const pendingReq = pending.get(requestId);
-    if (!pendingReq) return;
+      console.log("Authenticating with cookies:", getCookies());
 
-    pending.delete(requestId);
+      sendUnsafe(useLocalhost, { cookies: getCookies() });
 
-    ok ? pendingReq.resolve(data) : pendingReq.reject(error);
-  };
+      resolve(ws);
+    };
 
-  socket.onclose = () => {
-    socket = null;
-  };
+    ws.onerror = (err) => {
+      reject(err);
+    };
 
-  return socket;
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data.toString());
+      const { requestId, ok, data, error } = msg;
+
+      if (!requestId) return;
+
+      const pendingReq = pending.get(requestId);
+      if (!pendingReq) return;
+
+      pending.delete(requestId);
+
+      ok ? pendingReq.resolve(data) : pendingReq.reject(error);
+    };
+
+    ws.onclose = () => {
+      socket = null;
+    };
+  });
 }
 
-function send<T>(
+async function sendUnsafe<T>(
   useLocalhost: boolean,
   payload: Record<string, any>,
 ): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const ws = ensureSocket(useLocalhost);
+  if (!socket) {
+    throw new Error("WebSocket is not connected");
+  }
 
-    const requestId = randomUUID();
+  const requestId = randomUUID();
 
+  return new Promise<T>((resolve, reject) => {
     pending.set(requestId, { resolve, reject });
-
-    ws.send(
-      JSON.stringify({
-        ...payload,
-        requestId,
-        cookies, // optional: only needed if you authenticate via cookies manually
-      }),
-    );
+    socket?.send(JSON.stringify({ ...payload, requestId }));
   });
+}
+
+async function send<T>(
+  useLocalhost: boolean,
+  payload: Record<string, any>,
+): Promise<T> {
+  await ensureSocket(useLocalhost);
+  return await sendUnsafe(useLocalhost, payload);
 }
 
 export async function addRun(
