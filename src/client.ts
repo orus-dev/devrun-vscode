@@ -42,12 +42,12 @@ async function ensureSocket(useLocalhost: boolean): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(getWsOrigin(useLocalhost));
 
-    ws.onopen = () => {
+    ws.onopen = async () => {
       socket = ws;
 
       console.log("Authenticating with cookies:", getCookies());
 
-      sendUnsafe(useLocalhost, { cookies: getCookies() });
+      await sendUnsafe(useLocalhost, { cookies: getCookies() });
 
       resolve(ws);
     };
