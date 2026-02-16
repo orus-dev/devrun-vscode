@@ -91,9 +91,11 @@
     "@types/cors": "^2.8.19",
     "@types/diff-match-patch": "^1.0.36",
     "@types/express": "^5.0.6",
+    "@types/ws": "^8.18.1",
     "axios": "^1.13.5",
     "cors": "^2.8.6",
     "diff-match-patch": "^1.0.5",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "ws": "^8.19.0"
   }
 }

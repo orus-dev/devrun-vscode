@@ -11,6 +11,7 @@ export function startMonitoring(useLocalhost: boolean, runId: string) {
   let moves: LiveRunMove[] = [];
 
   let lastText = "";
+  let lastCursorOffset: number | undefined;
   let lastEventTime = Date.now();
   let idleTimeout: NodeJS.Timeout | undefined;
   let isSending = false;
@@ -18,7 +19,9 @@ export function startMonitoring(useLocalhost: boolean, runId: string) {
   const IDLE_MS = 350;
 
   if (vscode.window.activeTextEditor) {
-    lastText = vscode.window.activeTextEditor.document.getText();
+    const editor = vscode.window.activeTextEditor;
+    lastText = editor.document.getText();
+    lastCursorOffset = editor.document.offsetAt(editor.selection.active);
   }
 
   async function flush(file: string | null, language: string | null) {
@@ -42,41 +45,72 @@ export function startMonitoring(useLocalhost: boolean, runId: string) {
     return latency;
   }
 
+  // --- Existing text change interval ---
   const readInterval = setInterval(() => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) return;
 
     const newText = editor.document.getText();
-    if (newText === lastText) return;
+    if (newText !== lastText) {
+      let latency = getLatency();
 
-    let latency = getLatency();
+      const diffs = dmp.diff_main(lastText, newText);
+      dmp.diff_cleanupEfficiency(diffs);
 
-    const diffs = dmp.diff_main(lastText, newText);
-    dmp.diff_cleanupEfficiency(diffs);
+      const changes = diffsToChanges(diffs);
 
-    const changes = diffsToChanges(diffs);
+      lastText = newText;
 
-    lastText = newText;
+      for (const change of changes) {
+        moves.push({
+          moveId: moveId++,
+          latency,
+          cursor: editor.document.offsetAt(editor.selection.active),
+          changes: change,
+        });
+      }
 
-    for (const change of changes) {
+      if (idleTimeout) clearTimeout(idleTimeout);
+      idleTimeout = setTimeout(
+        () =>
+          flush(
+            path.basename(editor?.document.fileName || "") || null,
+            editor?.document.languageId || null,
+          ),
+        IDLE_MS,
+      );
+    }
+  }, 500);
+
+  // --- New cursor tracking interval ---
+  const cursorInterval = setInterval(() => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+
+    const cursorOffset = editor.document.offsetAt(editor.selection.active);
+
+    if (cursorOffset !== lastCursorOffset) {
+      const latency = getLatency();
+
       moves.push({
         moveId: moveId++,
         latency,
-        cursor: editor.document.offsetAt(editor.selection.active),
-        changes: change,
+        cursor: cursorOffset,
       });
-    }
 
-    if (idleTimeout) clearTimeout(idleTimeout);
-    idleTimeout = setTimeout(
-      () =>
-        flush(
-          path.basename(editor?.document.fileName || "") || null,
-          editor?.document.languageId || null,
-        ),
-      IDLE_MS,
-    );
-  }, 500);
+      lastCursorOffset = cursorOffset;
+
+      if (idleTimeout) clearTimeout(idleTimeout);
+      idleTimeout = setTimeout(
+        () =>
+          flush(
+            path.basename(editor.document.fileName || "") || null,
+            editor.document.languageId || null,
+          ),
+        IDLE_MS,
+      );
+    }
+  }, 1000); // every second
 
   vscode.window.onDidChangeActiveTextEditor((editor) => {
     let latency = getLatency();
@@ -99,6 +133,7 @@ export function startMonitoring(useLocalhost: boolean, runId: string) {
 
   return () => {
     clearInterval(readInterval);
+    clearInterval(cursorInterval);
     if (idleTimeout) clearTimeout(idleTimeout);
     flush(
       path.basename(vscode.window.activeTextEditor?.document.fileName || "") ||
