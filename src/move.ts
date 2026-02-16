@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { diff_match_patch, Diff } from "diff-match-patch";
 import { LiveRunMove } from "./types";
-import { addRunMoves } from "./client";
+import { addRunMoves, getText } from "./client";
 import path from "path";
 
 export function startMonitoring(useLocalhost: boolean, runId: string) {
@@ -112,6 +112,35 @@ export function startMonitoring(useLocalhost: boolean, runId: string) {
     }
   }, 1000); // every second
 
+  // Sync text every 5 seconds to prevent desync
+  const textStabilityInterval = setInterval(async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+
+    const serverText = await getText(useLocalhost, runId);
+
+    const editorText = editor.document.getText();
+    if (editorText !== serverText) {
+      clearTimeout(idleTimeout);
+      moves = [
+        {
+          latency: 0,
+          cursor: editor.document.offsetAt(editor.selection.active),
+          moveId: moveId++,
+          changes: {
+            from: 0,
+            to: serverText.length,
+            insert: editorText,
+          },
+        },
+      ];
+      flush(
+        path.basename(editor?.document.fileName || "") || null,
+        editor?.document.languageId || null,
+      );
+    }
+  }, 5000); // every 5 seconds
+
   vscode.window.onDidChangeActiveTextEditor((editor) => {
     let latency = getLatency();
 
@@ -132,6 +161,7 @@ export function startMonitoring(useLocalhost: boolean, runId: string) {
   });
 
   return () => {
+    clearInterval(textStabilityInterval);
     clearInterval(readInterval);
     clearInterval(cursorInterval);
     if (idleTimeout) clearTimeout(idleTimeout);

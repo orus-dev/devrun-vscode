@@ -212,3 +212,13 @@ export async function addRunMoves(
     moves,
   });
 }
+
+export async function getText(
+  useLocalhost: boolean,
+  runId: string,
+): Promise<string> {
+  return await send(useLocalhost, {
+    type: "getText",
+    runId,
+  });
+}
