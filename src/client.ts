@@ -133,6 +133,10 @@ async function ensureSocket(useLocalhost: boolean): Promise<WebSocket> {
       currentOrigin = null;
       connecting = null;
     };
+
+    ws.on("ping", () => {
+      ws.pong();
+    });
   });
 
   return connecting;
