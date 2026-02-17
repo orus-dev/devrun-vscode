@@ -129,7 +129,7 @@ export function startMonitoring(useLocalhost: boolean, runId: string) {
           moveId: moveId++,
           changes: {
             from: 0,
-            to: serverText.length,
+            to: serverText?.length || 0,
             insert: editorText,
           },
         },
