@@ -69,10 +69,7 @@ async function ensureSocket(useLocalhost: boolean): Promise<WebSocket> {
     return connecting;
   }
 
-  if (socket && currentOrigin !== origin) {
-    socket.close();
-    socket = null;
-  }
+  if (socket && currentOrigin !== origin) closeClient();
 
   connecting = new Promise<WebSocket>((resolve, reject) => {
     const ws = new WebSocket(origin);
@@ -88,7 +85,7 @@ async function ensureSocket(useLocalhost: boolean): Promise<WebSocket> {
         currentOrigin = origin;
         connecting = null;
 
-        await sendUnsafe(useLocalhost, {
+        await sendUnsafe({
           type: "auth",
           cookies: authCookies,
         });
@@ -146,10 +143,7 @@ async function ensureSocket(useLocalhost: boolean): Promise<WebSocket> {
    RPC helpers
 ────────────────────────── */
 
-async function sendUnsafe<T>(
-  useLocalhost: boolean,
-  payload: Record<string, any>,
-): Promise<T> {
+async function sendUnsafe<T>(payload: Record<string, any>): Promise<T> {
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     throw new Error("WebSocket is not open");
   }
@@ -164,7 +158,11 @@ async function sendUnsafe<T>(
 
     pending.set(requestId, { resolve, reject, timeout });
 
-    socket?.send(JSON.stringify({ ...payload, requestId }));
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      throw new Error("WebSocket closed while sending");
+    }
+
+    socket.send(JSON.stringify({ ...payload, requestId }));
   });
 }
 
@@ -173,7 +171,7 @@ async function send<T>(
   payload: Record<string, any>,
 ): Promise<T> {
   await ensureSocket(useLocalhost);
-  return sendUnsafe(useLocalhost, payload);
+  return sendUnsafe(payload);
 }
 
 /* ──────────────────────────
