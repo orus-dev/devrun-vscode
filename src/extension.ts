@@ -4,6 +4,7 @@ import { startServer, stopServer } from "./server";
 import os from "os";
 import { exec } from "child_process";
 import net from "net";
+import { closeClient } from "./client";
 
 var globalStatusBarItem: vscode.StatusBarItem | undefined;
 
@@ -105,6 +106,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
   stopServer(globalStatusBarItem as any);
+  closeClient();
 }
 
 export function canConnect(

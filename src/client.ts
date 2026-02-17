@@ -176,6 +176,13 @@ async function send<T>(
    Public API
 ────────────────────────── */
 
+export async function closeClient() {
+  if (!socket) return;
+  socket.close();
+  socket = null;
+  connecting = null;
+}
+
 export async function addRun(
   useLocalhost: boolean,
   problem: string,
